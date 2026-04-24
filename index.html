@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TikTok Live Interactive Overlay - V2</title>
+    <title>TikTok Live Interactive Overlay - V2.1</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Animate.css CDN -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <!-- Socket.io (Opsional jika menggunakan Bridge Node.js) -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
@@ -26,18 +28,18 @@
         }
         .khodam-card {
             background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
         }
         .quote-card {
             background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
         }
         .result-image {
-            width: 180px;
-            height: 180px;
+            width: 200px;
+            height: 200px;
             object-fit: cover;
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-radius: 20px;
+            border: 6px solid rgba(255, 255, 255, 0.4);
+            border-radius: 24px;
         }
         /* Custom scrollbar */
         ::-webkit-scrollbar { width: 4px; }
@@ -50,51 +52,51 @@
     <div id="control-panel" class="fixed top-4 left-4 z-50 w-80 glass-panel p-6 rounded-3xl text-white transition-all duration-500 shadow-2xl">
         <h1 class="text-xl font-black mb-4 flex items-center gap-2">
             <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-            OVERLAY PRO V.2
+            OVERLAY LIVE V.2.1
         </h1>
         
         <div class="space-y-4">
             <div>
-                <label class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Target Username</label>
-                <input type="text" id="username-input" placeholder="@streamer_anda" 
-                       class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 mt-1 focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                <label class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Username Target Live</label>
+                <input type="text" id="username-input" placeholder="@username_anda" 
+                       class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 mt-1 focus:ring-2 focus:ring-indigo-500 outline-none">
             </div>
 
             <div class="flex gap-2">
-                <button id="btn-connect" class="flex-1 bg-indigo-600 hover:bg-indigo-700 font-bold py-2 rounded-xl transition-all active:scale-95 shadow-lg">HUBUNGKAN</button>
-                <button id="btn-disconnect" class="hidden flex-1 bg-red-600 hover:bg-red-700 font-bold py-2 rounded-xl transition-all active:scale-95">PUTUS</button>
+                <button id="btn-connect" class="flex-1 bg-indigo-600 hover:bg-indigo-700 font-bold py-2 rounded-xl transition-all shadow-lg">CONNECT</button>
+                <button id="btn-disconnect" class="hidden flex-1 bg-red-600 hover:bg-red-700 font-bold py-2 rounded-xl transition-all">STOP</button>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="text-[9px] text-slate-400 uppercase font-bold">TTS Volume</label>
+                    <label class="text-[9px] text-slate-400 uppercase font-bold">Suara Volume</label>
                     <input type="range" id="volume-control" min="0" max="1" step="0.1" value="0.8" class="w-full accent-indigo-500">
                 </div>
                 <div>
-                    <label class="text-[9px] text-slate-400 uppercase font-bold">TTS Speed</label>
+                    <label class="text-[9px] text-slate-400 uppercase font-bold">Kecepatan</label>
                     <input type="range" id="pitch-control" min="0.5" max="1.5" step="0.1" value="1" class="w-full accent-indigo-500">
                 </div>
             </div>
 
-            <div class="bg-black/30 p-3 rounded-xl border border-white/5">
-                <label class="text-[10px] text-slate-400 uppercase font-bold">Status Koneksi</label>
-                <div id="status-badge" class="text-sm font-semibold text-slate-400">Idle</div>
+            <div class="bg-black/40 p-3 rounded-xl border border-white/5">
+                <label class="text-[10px] text-slate-400 uppercase font-bold">Status Sistem</label>
+                <div id="status-badge" class="text-xs font-semibold text-slate-400">Siap Menghubungkan...</div>
             </div>
 
             <div>
-                <label class="text-[10px] text-slate-400 uppercase font-bold">Chat Live Monitor</label>
-                <div id="chat-log" class="mt-1 h-36 bg-black/50 rounded-xl p-3 text-[11px] overflow-y-auto font-mono text-indigo-300 border border-white/5">
-                    [System]: Menunggu koneksi...
+                <label class="text-[10px] text-slate-400 uppercase font-bold">Real-time Chat Log</label>
+                <div id="chat-log" class="mt-1 h-32 bg-black/50 rounded-xl p-3 text-[11px] overflow-y-auto font-mono text-indigo-300 border border-white/5">
+                    [System]: Menunggu aktivitas penonton...
                 </div>
             </div>
             
-            <p class="text-[9px] text-center text-slate-500 uppercase tracking-tighter">Tekan <span class="text-white font-bold">'H'</span> untuk Sembunyikan Panel</p>
+            <p class="text-[9px] text-center text-slate-500 uppercase tracking-tighter">Shortcut: Tekan <span class="text-white font-bold">'H'</span> untuk menyembunyikan panel.</p>
         </div>
     </div>
 
     <!-- 2. AREA OVERLAY UTAMA -->
     <div id="overlay-area" class="overlay-container absolute inset-0 flex flex-col items-center justify-center">
-        <!-- Card dinamis akan muncul di sini -->
+        <!-- Overlay dinamis muncul di sini -->
     </div>
 
     <script>
@@ -103,10 +105,9 @@
          */
         const KHODAM_LIST = [
             "Kue Putu Nyasar", "Harimau Depresi", "Remote TV Rusak", "Tutup Botol Sosro", "Kucing Oyen Preman",
-            "Sempak Firaun", "Jin Tomang Galau", "Tahu Bulat Anget", "Korek Api Macet", "Kipas Angin Berdecit",
-            "Nasi Bungkus Karet Dua", "Kuntilanak Pake Skincare", "Tuyul Berambut", "Genderuwo Pemalu", "Bakso Beranak",
-            "Kabel Data Putus-nyambung", "Charger Ori Tapi KW", "Sapu Lidi Patah", "Gayung Love", "Ember Bocor",
-            "Sandal Jepit Sebelah", "Topi SD", "Kaos Kaki Bolong", "Helm Bogo Retak", "Kecoa Terbang Brutal"
+            "Jin Tomang Galau", "Tahu Bulat Anget", "Korek Api Macet", "Kipas Angin Berdecit", "Nasi Bungkus Karet Dua",
+            "Kuntilanak Pake Skincare", "Tuyul Berambut", "Genderuwo Pemalu", "Bakso Beranak", "Ember Bocor",
+            "Sandal Jepit Sebelah", "Kaos Kaki Bolong", "Helm Bogo Retak", "Kecoa Terbang Brutal", "Pocong Mancing"
         ];
 
         const QUOTE_LIST = [
@@ -114,12 +115,12 @@
             "Uang bukan segalanya, tapi segalanya butuh kuota.",
             "Masa depanmu tergantung pada mimpimu, jadi pergilah tidur.",
             "Kerja keraslah sampai tetangga mengira kamu pelihara tuyul.",
+            "Sukses itu seperti mandi, tidak ada yang permanen kalau tidak dilakukan setiap hari.",
             "Kalau orang lain bisa, kenapa harus saya?",
             "Jadilah dirimu sendiri, kecuali jika kamu bisa jadi Batman.",
             "Tidur adalah satu-satunya cara untuk kaya raya tanpa modal.",
             "Kamu itu unik, sama seperti 7 miliar orang lainnya.",
-            "Cantik itu relatif, tergantung letak kamera dan filter.",
-            "Rezeki sudah ada yang mengatur, tapi kalau nggak dijemput ya diambil orang."
+            "Cantik itu relatif, tergantung letak kamera dan filter."
         ];
 
         /**
@@ -129,9 +130,10 @@
         let eventQueue = [];
         let isProcessing = false;
         let lastUserAction = {}; 
+        let socket = null;
 
         /**
-         * CORE FUNCTIONS
+         * CORE FUNCTIONS (TTS & OVERLAY)
          */
         function speak(text) {
             if (!window.speechSynthesis) return;
@@ -159,31 +161,31 @@
             const area = document.getElementById('overlay-area');
             const card = document.createElement('div');
             
-            // Generate Image URL (Menggunakan LoremFlickr dengan keyword yang sesuai)
-            const imgKeyword = event.type === 'KHODAM' ? 'ghost,creature' : 'funny,inspiration';
-            const imgUrl = `https://loremflickr.com/320/320/${imgKeyword}?random=${Math.random()}`;
+            // Link Gambar Statis yang Relevan (Menggunakan Unsplash Source)
+            const imgKeyword = event.type === 'KHODAM' ? 'mystic' : 'funny';
+            const imgUrl = `https://source.unsplash.com/400x400/?${imgKeyword},${event.result.split(' ')[0]}`;
 
             if (event.type === 'KHODAM') {
-                card.className = `khodam-card animate__animated animate__zoomInDown p-10 rounded-[40px] text-white text-center max-w-lg border-8 border-white/10 flex flex-col items-center`;
+                card.className = `khodam-card animate__animated animate__bounceIn p-10 rounded-[45px] text-white text-center max-w-lg border-8 border-white/20 flex flex-col items-center`;
                 card.innerHTML = `
-                    <p class="text-lg font-bold bg-white/20 px-4 py-1 rounded-full mb-6 italic">@${event.user}</p>
-                    <img src="${imgUrl}" alt="" class="result-image mb-6 shadow-2xl">
-                    <p class="text-sm uppercase tracking-[0.2em] opacity-80 mb-2">Isi Khodam Kamu:</p>
-                    <h2 class="text-4xl font-black uppercase tracking-tight leading-none">${event.result}</h2>
-                    <div class="mt-8 h-1.5 bg-black/20 w-full rounded-full overflow-hidden">
-                        <div id="pb" class="h-full bg-white w-full transition-all duration-[7000ms] ease-linear"></div>
+                    <div class="mb-4 bg-black/30 px-6 py-1 rounded-full text-xs font-bold tracking-widest uppercase">Memberi Respon Untuk @${event.user}</div>
+                    <img src="${imgUrl}" onerror="this.src='https://via.placeholder.com/200?text=Khodam'" alt="" class="result-image mb-6 shadow-2xl">
+                    <p class="text-sm uppercase tracking-widest opacity-70 mb-1">Nama Khodam Kamu:</p>
+                    <h2 class="text-5xl font-black uppercase tracking-tighter leading-none mb-6">${event.result}</h2>
+                    <div class="h-2 bg-black/20 w-64 rounded-full overflow-hidden">
+                        <div id="pb" class="h-full bg-white w-full transition-all duration-[8000ms] ease-linear"></div>
                     </div>
                 `;
-                speak(`Khodam milik ${event.user} adalah ${event.result}`);
+                speak(`Halo ${event.user}, Khodam yang melindungi kamu adalah ${event.result}`);
             } else {
-                card.className = `quote-card animate__animated animate__fadeInUp p-10 rounded-[40px] text-white text-center max-w-xl border-8 border-white/10 flex flex-col items-center`;
+                card.className = `quote-card animate__animated animate__fadeInUp p-10 rounded-[45px] text-white text-center max-w-xl border-8 border-white/20 flex flex-col items-center`;
                 card.innerHTML = `
-                    <p class="text-lg font-bold bg-white/20 px-4 py-1 rounded-full mb-6 italic">@${event.user}</p>
-                    <img src="${imgUrl}" alt="[Image of Quote]" class="result-image mb-6 shadow-2xl">
-                    <p class="text-2xl font-bold italic leading-relaxed mb-4">"${event.result}"</p>
-                    <span class="text-[10px] uppercase tracking-[0.3em] font-black opacity-60">Harian Motivasi Ngaco</span>
+                    <div class="mb-4 bg-black/30 px-6 py-1 rounded-full text-xs font-bold tracking-widest uppercase">Pesan Untuk @${event.user}</div>
+                    <img src="${imgUrl}" onerror="this.src='https://via.placeholder.com/200?text=Quote'" alt="[Image of Quote]" class="result-image mb-6 shadow-2xl">
+                    <p class="text-3xl font-black italic leading-tight mb-4">"${event.result}"</p>
+                    <span class="text-[10px] font-bold opacity-60 italic">- Kutipan Penenang Hati -</span>
                 `;
-                speak(`Pesan untuk ${event.user}. ${event.result}`);
+                speak(`Dengarkan ini ${event.user}. ${event.result}`);
             }
 
             area.appendChild(card);
@@ -195,7 +197,8 @@
 
             // Tampilkan selama 8 detik
             setTimeout(() => {
-                card.classList.add('animate__fadeOutOut');
+                card.classList.replace('animate__bounceIn', 'animate__fadeOutDown');
+                card.classList.replace('animate__fadeInUp', 'animate__fadeOutDown');
                 setTimeout(() => {
                     card.remove();
                     isProcessing = false;
@@ -205,35 +208,53 @@
         }
 
         /**
-         * EVENT HANDLERS
+         * TIKTOK LIVE CONNECTION BRIDGE
          */
-        function addLog(user, msg) {
-            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        function handleIncomingChat(senderName, message) {
+            const cleanMsg = message.toLowerCase();
+            
+            // Log ke monitor
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             const log = document.getElementById('chat-log');
-            log.innerHTML += `<div class="mb-1"><span class="text-slate-500">[${time}]</span> <span class="text-white font-bold">${user}:</span> ${msg}</div>`;
+            log.innerHTML += `<div class="mb-1 border-b border-white/5 pb-1"><span class="text-slate-500">[${time}]</span> <span class="text-indigo-400 font-bold">@${senderName}:</span> ${message}</div>`;
             log.scrollTop = log.scrollHeight;
-        }
 
-        function handleIncomingChat(user, message) {
-            const msg = message.toLowerCase();
-            addLog(user, message);
-
+            // Debounce: Hindari spam dari penonton yang sama (Jeda 15 detik)
             const now = Date.now();
-            if (lastUserAction[user] && (now - lastUserAction[user] < 15000)) return;
+            if (lastUserAction[senderName] && (now - lastUserAction[senderName] < 15000)) return;
 
-            if (msg.includes("cekkodam") || msg.includes("khodam")) {
-                lastUserAction[user] = now;
-                eventQueue.push({ type: 'KHODAM', user: user, result: getKhodam(user) });
-            } else if (msg.includes("quote") || msg.includes("kata")) {
-                lastUserAction[user] = now;
-                eventQueue.push({ type: 'QUOTE', user: user, result: QUOTE_LIST[Math.floor(Math.random() * QUOTE_LIST.length)] });
+            // Cek Keyword
+            if (cleanMsg.includes("cekkodam") || cleanMsg.includes("khodam")) {
+                lastUserAction[senderName] = now;
+                eventQueue.push({ type: 'KHODAM', user: senderName, result: getKhodam(senderName) });
+            } else if (cleanMsg.includes("quote") || cleanMsg.includes("kata")) {
+                lastUserAction[senderName] = now;
+                eventQueue.push({ type: 'QUOTE', user: senderName, result: QUOTE_LIST[Math.floor(Math.random() * QUOTE_LIST.length)] });
             }
             
             processQueue();
         }
 
+        // KONEKSI KE BRIDGE (Node.js TikTok Live Connector)
+        // Jika Anda menggunakan aplikasi perantara di PC, hubungkan ke localhost:8081
+        function connectToTikTokBridge(targetUsername) {
+            // Simulasi Koneksi WebSocket (Ganti dengan alamat server bridge Anda jika ada)
+            // Contoh: socket = io("http://localhost:8081");
+            
+            addLog("System", "Mencoba menghubungkan ke live " + targetUsername + "...");
+            
+            // LOGIKA SIMULASI (Hapus/Komentar bagian ini jika menggunakan Bridge Asli)
+            startFakeSimulation();
+        }
+
+        function addLog(user, msg) {
+            const log = document.getElementById('chat-log');
+            log.innerHTML += `<div class="text-slate-400 italic font-bold text-center my-2">-- ${msg} --</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+
         /**
-         * CONNECTION LOGIC
+         * UI ACTIONS
          */
         const btnConnect = document.getElementById('btn-connect');
         const btnDisconnect = document.getElementById('btn-disconnect');
@@ -241,21 +262,19 @@
 
         btnConnect.onclick = () => {
             const user = document.getElementById('username-input').value;
-            if (!user) return alert("Masukkan username!");
+            if (!user) return alert("Masukkan Username Streamer!");
 
             statusBadge.innerText = "Connecting...";
-            statusBadge.className = "text-sm font-semibold text-yellow-400 animate-pulse";
+            statusBadge.className = "text-xs font-bold text-yellow-400 animate-pulse uppercase";
 
             setTimeout(() => {
                 isConnected = true;
                 btnConnect.classList.add('hidden');
                 btnDisconnect.classList.remove('hidden');
-                statusBadge.innerText = "Connected to " + user;
-                statusBadge.className = "text-sm font-semibold text-green-400";
-                
-                // Mulai simulasi jika tidak pakai backend asli
-                startSimulation();
-            }, 1000);
+                statusBadge.innerText = "ACTIVE: STREAMING " + user.toUpperCase();
+                statusBadge.className = "text-xs font-bold text-green-400 uppercase";
+                connectToTikTokBridge(user);
+            }, 1500);
         };
 
         btnDisconnect.onclick = () => {
@@ -263,19 +282,23 @@
             btnConnect.classList.remove('hidden');
             btnDisconnect.classList.add('hidden');
             statusBadge.innerText = "Disconnected";
-            statusBadge.className = "text-sm font-semibold text-red-400";
+            statusBadge.className = "text-xs font-bold text-red-400 uppercase";
+            if(socket) socket.disconnect();
         };
 
-        function startSimulation() {
-            const dummyUsers = ["Sultan_Gifting", "MemeLord", "Anti_Galau", "Ratu_Drama", "Bang_Zul"];
-            const dummyMsgs = ["Cekkhodam min!", "Minta quote dong", "Khodam saya apa ya?", "Kata-kata hari ini", "Halo semua"];
+        // Simulasi Penonton (Hanya untuk demo jika tidak ada Bridge)
+        let simInterval;
+        function startFakeSimulation() {
+            const dummyPenonton = ["Agus_Bakso", "Siska_Gaming", "Bocil_Kematian", "Raja_Gifting", "Asep_Knalpot", "Indah_Cantik"];
+            const dummyKomentar = ["Cekkhodam min", "Minta quote dong", "Khodam saya apa?", "kata kata hari ini bang", "Halo salam kenal"];
             
-            setInterval(() => {
+            if(simInterval) clearInterval(simInterval);
+            simInterval = setInterval(() => {
                 if (!isConnected) return;
-                const u = dummyUsers[Math.floor(Math.random() * dummyUsers.length)];
-                const m = dummyMsgs[Math.floor(Math.random() * dummyMsgs.length)];
-                handleIncomingChat(u, m);
-            }, 10000);
+                const p = dummyPenonton[Math.floor(Math.random() * dummyPenonton.length)];
+                const m = dummyKomentar[Math.floor(Math.random() * dummyKomentar.length)];
+                handleIncomingChat(p, m);
+            }, 12000);
         }
 
         function toggleControlPanel() {
